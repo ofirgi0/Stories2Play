@@ -1,34 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'views/login_screen.dart';
+import 'views/main_screen.dart'; // <- create next
+import 'views/story_screen.dart'; // ← we’ll create this soon
 
-import 'viewmodels/category_provider.dart';
-import 'viewmodels/book_provider.dart';
-import 'viewmodels/page_provider.dart';
-import 'views/main_screen.dart';
+
 
 void main() {
   runApp(const Stories2PlayApp());
 }
 
 class Stories2PlayApp extends StatelessWidget {
-  const Stories2PlayApp({Key? key}) : super(key: key);
+  const Stories2PlayApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => CategoryProvider()),
-        ChangeNotifierProvider(create: (context) => BookProvider()),
-        ChangeNotifierProvider(create: (context) => PageProvider()),
-      ],
-      child: MaterialApp(
-        title: 'Stories2Play',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        debugShowCheckedModeBanner: false,
-        home: MainScreen(),
-      ),
+    return MaterialApp(
+      title: 'Stories2Play',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/main': (context) => const MainScreen(),
+        // '/story': (context) => const StoryScreen(), // temporary
+      },
     );
   }
 }

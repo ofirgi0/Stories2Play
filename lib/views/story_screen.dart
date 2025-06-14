@@ -1,100 +1,192 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:just_audio/just_audio.dart';
-
-import '../viewmodels/book_provider.dart';
-import '../viewmodels/page_provider.dart';
-import '../models/page_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:stories2play/models/book_model.dart';
+import 'package:stories2play/models/page_model.dart';
+import 'package:flutter/services.dart';
 
 class StoryScreen extends StatefulWidget {
-  final String bookId;
+  final BookModel book;
 
-  const StoryScreen({Key? key, required this.bookId}) : super(key: key);
+  const StoryScreen({super.key, required this.book});
 
   @override
-  _StoryScreenState createState() => _StoryScreenState();
+  State<StoryScreen> createState() => _StoryScreenState();
 }
 
 class _StoryScreenState extends State<StoryScreen> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  int currentPageIndex = 0;
+  final List<int> pageHistory = [];
+
+  PageModel get currentPage => widget.book.pagesData[currentPageIndex];
 
   @override
   void initState() {
     super.initState();
-    final bookProvider = Provider.of<BookProvider>(context, listen: false);
-    final book = bookProvider.books[widget.bookId];
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _precacheAllImages();
+  }
 
-    if (book != null) {
-      Provider.of<PageProvider>(context, listen: false).loadPages(book.pagesData);
-      _playNarration();
+  Future<void> _precacheAllImages() async {
+    for (final page in widget.book.pagesData) {
+      precacheImage(CachedNetworkImageProvider(page.pageImageUrl), context);
     }
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
-  Future<void> _playNarration() async {
-    final page = Provider.of<PageProvider>(context, listen: false).currentPage;
-    if (page?.voiceNarration != null && page!.voiceNarration!.isNotEmpty) {
-      try {
-        await _audioPlayer.setUrl(page.voiceNarration!);
-        _audioPlayer.play();
-      } catch (e) {
-        print("Failed to play narration: $e");
-      }
+  void _goToPage(int newPageIndex) {
+    if (newPageIndex < 0) {
+      Navigator.pop(context);
+    } else if (newPageIndex == 0) {
+      setState(() {
+        currentPageIndex = 0;
+        pageHistory.clear();
+      });
+    } else {
+      setState(() {
+        pageHistory.add(currentPageIndex);
+        currentPageIndex = newPageIndex;
+      });
     }
   }
 
-  void _goToNextPage(int nextPageIndex) {
-    final pageProvider = Provider.of<PageProvider>(context, listen: false);
-    pageProvider.goToPage(nextPageIndex);
-    _playNarration();
+  void _goToPreviousPage() {
+    if (pageHistory.isNotEmpty) {
+      setState(() {
+        currentPageIndex = pageHistory.removeLast();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final pageProvider = Provider.of<PageProvider>(context);
-    final currentPage = pageProvider.currentPage;
+    final page = currentPage;
 
-    if (currentPage == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text("Story")),
-        body: const Center(child: Text("No pages available")),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("Story")),
-      body: GestureDetector(
-        onTap: () {
-          if (currentPage.choices.isEmpty) {
-            _goToNextPage(pageProvider.currentPageIndex + 1);
-          }
-        },
-        child: Column(
+    return WillPopScope(
+      onWillPop: () async {
+        if (pageHistory.isNotEmpty) {
+          _goToPreviousPage();
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
           children: [
-            Expanded(
-              child: Image.network(currentPage.pageImageUrl, fit: BoxFit.cover, width: double.infinity),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(currentPage.pageText, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
-            ),
-            if (currentPage.choices.isNotEmpty)
-              Column(
-                children: currentPage.choices.map((choice) {
-                  return ElevatedButton(
-                    onPressed: () => _goToNextPage(choice.page),
-                    child: Text(choice.text),
-                  );
-                }).toList(),
+            Positioned.fill(
+              child: CachedNetworkImage(
+                imageUrl: page.pageImageUrl,
+                fit: BoxFit.cover,
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
+                placeholder: (context, url) => const SizedBox.shrink(),
+                errorWidget: (context, url, error) =>
+                const Center(child: Icon(Icons.error)),
               ),
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                if (page.gotoAction.isEmpty) {
+                  if (page.nextPage != -1) {
+                    _goToPage(page.nextPage);
+                  }
+                }
+              },
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Stack(
+                    children: [
+                      Align(
+                        alignment: _getTextAlignment(page.textLocation),
+                        child: Container(
+                          margin: EdgeInsets.only(
+                            left: 24,
+                            right: 24,
+                            top: 24,
+                            bottom: (page.textLocation == 'bottom' &&
+                                page.gotoAction.isNotEmpty)
+                                ? page.gotoAction.length > 2
+                                ? 160
+                                : 90
+                                : 24,
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Directionality(
+                            textDirection: TextDirection.rtl,
+                            child: Text(
+                              page.pageText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                height: 1.5,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (page.gotoAction.isNotEmpty)
+                        Positioned(
+                          bottom: 32,
+                          left: 16,
+                          right: 16,
+                          child: Center(
+                            child: Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              alignment: WrapAlignment.center,
+                              children: page.gotoAction.map((choice) {
+                                return ElevatedButton(
+                                  onPressed: () {
+                                    _goToPage(choice.page);
+                                  },
+                                  child: Text(choice.text),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 12,
+              child: IconButton(
+                onPressed: _goToPreviousPage,
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Alignment _getTextAlignment(String location) {
+    switch (location) {
+      case 'top':
+        return Alignment.topCenter;
+      case 'bottom':
+        return Alignment.bottomCenter;
+      case 'left':
+        return Alignment.centerLeft;
+      case 'right':
+        return Alignment.centerRight;
+      default:
+        return Alignment.bottomCenter;
+    }
   }
 }

@@ -1,54 +1,38 @@
-import 'dart:convert';
 import 'page_model.dart';
 
 class BookModel {
   final String id;
-  final double price;
-  final String author;
   final String title;
+  final String description;
+  final String author;
   final String coverImageUrl;
   final String backgroundMusic;
-  final String description;
   final List<PageModel> pagesData;
+  final String folderId; // ✅ Add this field
 
   BookModel({
     required this.id,
-    required this.price,
-    required this.author,
     required this.title,
+    required this.description,
+    required this.author,
     required this.coverImageUrl,
     required this.backgroundMusic,
-    required this.description,
     required this.pagesData,
+    required this.folderId, // ✅ add here
   });
 
-  // Convert JSON to BookModel
-  factory BookModel.fromJson(Map<String, dynamic> json) {
+  factory BookModel.fromJson(Map<String, dynamic> json, {required String folderId}) {
     return BookModel(
       id: json['id'],
-      price: (json['price'] as num).toDouble(),
-      author: json['author'],
       title: json['title'],
+      description: json['description'] ?? '',
+      author: json['author'] ?? '',
       coverImageUrl: json['coverImageUrl'],
-      backgroundMusic: json['backgroundMusic'] ?? "",
-      description: json['description'],
-      pagesData: (json['pagesData'] as List)
-          .map((page) => PageModel.fromJson(page))
+      backgroundMusic: json['backgroundMusic'] ?? '',
+      pagesData: (json['pagesData'] as List? ?? [])
+          .map((e) => PageModel.fromJson(e))
           .toList(),
+      folderId: folderId, // ✅ set this from outside
     );
-  }
-
-  // Convert BookModel to JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'price': price,
-      'author': author,
-      'title': title,
-      'coverImageUrl': coverImageUrl,
-      'backgroundMusic': backgroundMusic,
-      'description': description,
-      'pagesData': pagesData.map((page) => page.toJson()).toList(),
-    };
   }
 }

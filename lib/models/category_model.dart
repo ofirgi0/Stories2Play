@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 class CategoryModel {
   final String categoryId;
   final String name;
   final String coverImgUrl;
-  final String description;
+  final Map<String, String> description;
   final List<String> books;
+
 
   CategoryModel({
     required this.categoryId,
@@ -15,25 +14,13 @@ class CategoryModel {
     required this.books,
   });
 
-  // Convert JSON to CategoryModel
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
       categoryId: json['categoryId'],
       name: json['name'],
       coverImgUrl: json['coverImgUrl'],
-      description: json['description'],
+      description: Map<String, String>.from(json['description'] ?? {}),
       books: List<String>.from(json['books']),
     );
-  }
-
-  // Convert CategoryModel to JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'categoryId': categoryId,
-      'name': name,
-      'coverImgUrl': coverImgUrl,
-      'description': description,
-      'books': books,
-    };
   }
 }

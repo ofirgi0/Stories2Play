@@ -1,69 +1,38 @@
+import 'goto_action.dart';
+
 class PageModel {
   final String pageText;
   final String pageImageUrl;
   final String? voiceNarration;
-  final List<Choice> choices;
-  final List<String> sounds;
+  final List<dynamic> sounds;
+  final List<GotoAction> gotoAction;
+  final String textLocation;
+  final int pageNum;
+  final int nextPage;
 
   PageModel({
     required this.pageText,
     required this.pageImageUrl,
     this.voiceNarration,
-    required this.choices,
     required this.sounds,
+    required this.gotoAction,
+    required this.textLocation,
+    required this.pageNum,
+    required this.nextPage,
   });
 
-  // Convert JSON to PageModel
   factory PageModel.fromJson(Map<String, dynamic> json) {
     return PageModel(
       pageText: json['pageText'],
-      pageImageUrl: json['pageImageUrl'],
-      voiceNarration: json['voiceNarration'], // Can be null
-      choices: (json['gotoAction'] as List)
-          .map((choice) => Choice.fromJson(choice))
+      pageImageUrl: json['pageImageUrl'] ?? json['pageImagUrl'] ?? '',
+      voiceNarration: json['narrationUrl'],
+      sounds: List<dynamic>.from(json['pageActions']?['sounds'] ?? []),
+      gotoAction: (json['pageActions']['gotoAction'] as List<dynamic>? ?? [])
+          .map((item) => GotoAction.fromJson(item))
           .toList(),
-      sounds: List<String>.from(json['sounds']),
+      textLocation: json['textLocation'] ?? 'bottom',
+      pageNum: json['pageNum'] ?? 0,
+      nextPage: json['nextPage'] ?? -1,
     );
-  }
-
-  // Convert PageModel to JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'pageText': pageText,
-      'pageImageUrl': pageImageUrl,
-      'voiceNarration': voiceNarration,
-      'gotoAction': choices.map((choice) => choice.toJson()).toList(),
-      'sounds': sounds,
-    };
-  }
-}
-
-class Choice {
-  final String text;
-  final int page;
-  final String? iconUrl;
-
-  Choice({
-    required this.text,
-    required this.page,
-    this.iconUrl,
-  });
-
-  // Convert JSON to Choice
-  factory Choice.fromJson(Map<String, dynamic> json) {
-    return Choice(
-      text: json['text'],
-      page: json['page'],
-      iconUrl: json['iconUrl'],
-    );
-  }
-
-  // Convert Choice to JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'page': page,
-      'iconUrl': iconUrl,
-    };
   }
 }
